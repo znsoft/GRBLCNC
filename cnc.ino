@@ -528,7 +528,7 @@ void penDown() {
   float r_axis1 = -yo;
   float rt_axis0 = xt - center_axis0;
   float rt_axis1 = yt - center_axis1;
-  
+  if(radius == 0.0) radius = sqrt(r_axis0*r_axis0 + r_axis1*r_axis1);
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
   float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
   if (is_clockwise_arc) { // Correct atan2 output per direction
