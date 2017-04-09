@@ -15,8 +15,8 @@
 char STEP = MICROSTEP ;
 
 // Servo position for Up and Down
-const int penZUp = 125;
-const int penZDown = 85;
+const int penZUp = 127;
+const int penZDown = 0;
 int laserwait = 10;
 // Servo on PWM pin 10
 const int penServoPin = 10 ;
@@ -87,7 +87,7 @@ void setup() {
   Serial.begin( 9600 );
   pinMode(13, OUTPUT);
   penServo.attach(penServoPin);
-  penServo.write(penZUp);
+  //penServo.write(penZUp);
   delay(100);
 
   // Decrease if necessary
@@ -208,29 +208,40 @@ int getIntParam(char* line, char param, int defaultValue) {
 }
 
 
+void setZPos(float z) {
+  int iZ = round(z);
+  if (iZ < penZDown)iZ = penZDown;
+  if (iZ > penZUp) iZ = penZUp;
+  penServo.write(iZ);
+
+}
+
 void processArc( struct point newPos, char* line,  int currentIndex, bool isCCW) {
   newPos.x = getFloatParam(line + currentIndex, 'X', actuatorPos.x) * scale;
   newPos.y = getFloatParam(line + currentIndex, 'Y', actuatorPos.y) * scale;
+  newPos.z = getFloatParam(line + currentIndex, 'Z', actuatorPos.z) * scale;
   float I = getFloatParam(line + currentIndex, 'I', 0.0) * scale;
   float J = getFloatParam(line + currentIndex, 'J', 0.0) * scale;
   float R = getFloatParam(line + currentIndex, 'R', 0.0) * scale;
-
-
+  setZPos(newPos.z);
   drawarc(newPos.x, newPos.y, I, J, R, isCCW );
   //        Serial.println("ok");
   actuatorPos.x = newPos.x;
   actuatorPos.y = newPos.y;
+  actuatorPos.z = newPos.z;
 
 }
 
 void processLinear( struct point newPos, char* line,  int currentIndex) {
   newPos.x = getFloatParam(line + currentIndex, 'X', actuatorPos.x) * scale;
   newPos.y = getFloatParam(line + currentIndex, 'Y', actuatorPos.y) * scale;
+  newPos.z = getFloatParam(line + currentIndex, 'Z', actuatorPos.z) * scale;
+  setZPos(newPos.z);
   drawLine(newPos.x, newPos.y );
 
   actuatorPos.x = newPos.x;
   actuatorPos.y = newPos.y;
-
+  actuatorPos.z = newPos.z;
 }
 
 void processIncomingLine( char* line, int charNB ) {
@@ -271,38 +282,46 @@ void processIncomingLine( char* line, int charNB ) {
         if (verbose)Serial.println(g);
         switch (g  ) {                  // Select G command
 
-          case 0:                                   // G00 & G01 - Movement or fast movement. Same here
+          case 0:                                   // G00 & G01 - Movement or movement with laser
             if (verbose)
               Serial.println("G0");
 
             penUp();
             processLinear( newPos, line,   currentIndex);
             break;
+
           case 1:
             if (verbose)
               Serial.println("G1");
             penDown();
             processLinear( newPos, line,   currentIndex);
+            penUp();
             break;
+
           case 2:
             if (verbose)
               Serial.println("G2");
             penDown();
             processArc( newPos, line,   currentIndex, true);
+            penUp();
             break;
+
           case 3:
             if (verbose)
               Serial.println("G3");
 
             penDown();
             processArc( newPos, line,   currentIndex, false);
+            penUp();
             break;
-           
+
+          case 4:
+            delay(getIntParam(line + currentIndex, 'P', 0));
+            break;
+
           case 23:
             scale = getFloatParam(line + currentIndex, 'S', scale);
             break;
-
-
         }
         break;
       case 'T':
@@ -477,32 +496,28 @@ void drawLine(float x1, float y1) {
 //  Raises pen
 void penUp() {
   isPenDown = false;
-  penServo.write(penZUp);
+  //penServo.write(penZUp);
   //delay(penDelay);
-  Zpos = Zmax;
+  //Zpos = Zmax;
   digitalWrite(15, LOW);
   digitalWrite(13, LOW);
   digitalWrite(16, HIGH);
   if (verbose) {
     Serial.println("Pen up!");
-
   }
 }
 //  Lowers pen
 void penDown() {
   isPenDown = true;
-  penServo.write(penZDown);
+  //penServo.write(penZDown);
   //delay(penDelay);
-  Zpos = Zmin;
+  //Zpos = Zmin;
   digitalWrite(15, HIGH);
   digitalWrite(13, HIGH);
   //delay(laserwait);
-
   digitalWrite(16, LOW);
   if (verbose) {
     Serial.println("Pen down.");
-
-
   }
 }
 
