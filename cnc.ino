@@ -15,8 +15,8 @@
 char STEP = MICROSTEP ;
 
 // Servo position for Up and Down
-const int penZUp = 127;
-const int penZDown = 0;
+const int penZUp = 120;
+const int penZDown = 19;
 int laserwait = 10;
 // Servo on PWM pin 10
 const int penServoPin = 10 ;
@@ -57,9 +57,9 @@ float StepsPerMillimeterY = 100.0;
 // Drawing robot limits, in mm
 // OK to start with. Could go up to 50 mm if calibrated well.
 float Xmin = 0;
-float Xmax = 40;
+float Xmax = 45;
 float Ymin = 0;
-float Ymax = 40;
+float Ymax = 45;
 float Zmin = 0;
 float Zmax = 1;
 float scale = 1;

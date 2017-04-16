@@ -1,0 +1,320 @@
+<html>
+<meta charset="utf-8" />
+<title>LeraTree</title>
+<style>
+    button
+    {
+        border-style: none;
+        border-color: inherit;
+        border-width: medium;
+        background-color: #4CAF50; /* Green */
+        color: white;
+        padding: 15px 32px;
+        text-align: left;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        width: 13px;
+    }
+    #voltage
+    {
+        width: 259px;
+    }
+    #output
+    {
+        width: 259px;
+    }
+    body
+    {
+        background: white;
+    }
+    .Toolbar
+    {
+        float: left;
+        font-family: 'Trebuchet MS';
+        font-size: 14px;
+        font-variant: small-caps;
+        text-align: center;
+        background: #F2F7FE;
+        padding: 10px 15px 3px 10px;
+        margin-bottom: 1px;
+        margin-right: 1px;
+        border: 1px solid #7B899B;
+    }
+    .Toolbar button
+    {
+        padding: 6px;
+        margin: 7px 2px;
+        font-variant: normal;
+        font-size: 12px;
+    }
+    .CanvasContainer
+    {
+        clear: both;
+    }
+    canvas
+    {
+        border: 1px solid #7B899B;
+    }
+    img
+    {
+        padding: 2px;
+        border: 2px solid #F2F7FE;
+    }
+    img:hover
+    {
+        border: 2px groove #E4F0FE;
+        background: white;
+    }
+    img.Selected
+    {
+        border: 2px groove #E4F0FE;
+    }
+    #savedCopyContainer
+    {
+        display: none;
+    }
+    #savedCopyContainer img
+    {
+        width: 250px;
+        height: 150px;
+    }
+    .style1
+    {
+        font-size: small;
+    }
+    .style2
+    {
+        text-align: left;
+    }
+</style>
+<div class="CanvasContainer">
+    <canvas id="drawingCanvas" width="500" height="300"></canvas>
+</div>
+
+<script language="javascript" type="text/javascript">
+
+  var wsUri = "ws://192.168.4.1:81";
+  var output;
+  var speed;
+
+var canvas;
+var context;
+var canvasData;
+//var canvasWidth;// = canvas.width;
+//var canvasHeight;// = canvas.height;
+
+
+
+
+function draw(event) {
+ var x = event.pageX - this.offsetLeft;
+	  var y = event.pageY - this.offsetTop;
+	  // getting image data and RGB values
+	  var img_data = context.getImageData(x, y, 1, 1).data;
+	  var R = img_data[0];
+	  var G = img_data[1] + R*256;
+	  var B = img_data[2] + G*256;
+      websocket.send('#'+B.toString(16));
+}
+
+function SetSpeed(e) {
+      websocket.send('%'+e.toString(16));
+}
+function SetLight(e) {
+      websocket.send('$'+e.toString(16));
+}
+
+
+
+window.onload = function() {
+      canvas = document.getElementById("drawingCanvas");
+      context = canvas.getContext("2d");
+      canvasData = context.getImageData(0, 0, canvas.width, canvas.height); 
+      // Подключаем требуемые для рисования события
+     // canvas.onmousedown = startDrawing;
+     // canvas.onmouseup = stopDrawing;
+     // canvas.onmouseout = stopDrawing;
+      canvas.onmousemove = draw;
+     init();
+     
+     
+     for(var x = 0;x<canvas.width;x++)
+     for(var y = 0;y<canvas.height;y++)
+        {
+        var d = 0.1+(x*x+y*y+10000)/(canvas.width*canvas.width - canvas.height * canvas.height);
+        var r = (d * x/canvas.width) * 456 ;
+        var g = (d * y/canvas.height)* 556 ; 
+        var b = ((9-d) * x/canvas.width * y/canvas.height -d )* 256 ; 
+        drawPixel(x,y,r,g,b,256);
+        }     
+     updateCanvas();   
+     
+   }
+
+
+
+
+//var canvas = document.getElementById("myCanvas");
+//var ctx = canvas.getContext("2d");
+
+
+// That's how you define the value of a pixel //
+function drawPixel (x, y, r, g, b, a) {
+    var index = (x + y * canvas.width) * 4;
+
+    canvasData.data[index + 0] = r;
+    canvasData.data[index + 1] = g;
+    canvasData.data[index + 2] = b;
+    canvasData.data[index + 3] = a;
+}
+
+// That's how you update the canvas, so that your //
+// modification are taken in consideration //
+function updateCanvas() {
+    context.putImageData(canvasData, 0, 0);
+}
+
+
+
+  function init()
+  {
+    output = document.getElementById("output");
+    testWebSocket();
+  }
+
+  function testWebSocket()
+  {
+    websocket = new WebSocket(wsUri);
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+  }
+
+  function onOpen(evt)
+  {
+    output.innerHTML = "CONNECTED";
+  }
+
+  function onClose(evt)
+  {
+     output.innerHTML = "DISCONNECTED";
+    testWebSocket();
+  }
+
+  function onMessage(evt)
+  {
+    document.getElementById("voltage").innerHTML = (evt.data/1000) + " V";
+    //websocket.close();
+  }
+
+  function onError(evt)
+  {
+    writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+  }
+
+  function doSend(message)
+  {
+    websocket.send(message);
+  }
+
+  function writeToScreen(message)
+  {
+    var pre = document.createElement("p");
+    pre.style.wordWrap = "break-word";
+    pre.innerHTML = message;
+    output.appendChild(pre);
+  }
+
+   function mouseCoords(e) {
+    if (document.all)  { 
+      x = event.x + document.body.scrollLeft; 
+      y = event.y + document.body.scrollTop; 
+    } else {
+      x = e.pageX; 
+      y = e.pageY; 
+    }
+   // output.innerHTML = "X : " + x + ", Y : " + y;
+   }
+
+  window.addEventListener("load", init, false);
+  window.setInterval("doSend('v')" , 1000);
+  
+function Button1_onclick() {
+
+}
+//bflksonrm
+//fmnsrbklx
+function Button1_onclick() {
+
+}
+
+</script>
+
+<body>
+    <h6 style="height: 2px; width: 262px">
+        Led control</h6>
+    <table id="buttons" cellpadding="2" style="width: 259px; height: 169px; background-color: #FFCC99;">
+        <tr>
+            <td class="style1">
+    <input type="button" value="XStrobo" onclick="doSend('e')" /><br>
+                <input type="button" value="Demo L" onclick="doSend('l')" />
+            </td>
+            <td>
+                <button onclick='doSend("f")' class="style1">
+                    Fill</button>
+                <span class="style1">&nbsp; </span>
+            </td>
+            <td>
+                <button onclick='doSend("m")' class="style1">
+                    <div class="style2">
+                        SlowMove</div>
+                </button>
+                <span class="style1">&nbsp; </span>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <button onmousedown='doSend("n")' class="style1">
+                    Random</button>
+                <span class="style1">&nbsp; </span>
+            </td>
+            <td>
+                <button onclick='doSend("s")' class="style1">
+                    <div class="style2">
+                        Rainbow</div>
+                </button>
+                <span class="style1">&nbsp; </span>
+            </td>
+            <td>
+                <button onmousedown='doSend("r")' class="style1">
+                    Star</button>
+                <span class="style1">&nbsp; </span>
+            </td>
+        </tr>
+        <tr>
+            <td class="style1">
+                <input type="button" value="Demo O" onclick="doSend('o')" />
+            </td>
+            <td>
+                <button onclick='doSend("b")' class="style1">
+                    Run</button>
+                <span class="style1">&nbsp; </span>
+            </td>
+            <td class="style1">
+                <input type="button" value="Demo K" onclick="doSend('k')" />
+                    <input type="button" value="Ping" onclick="doSend('p')" /><br>
+    <input type="button" value="XFade" onclick="doSend('X')" /><br>
+
+            </td>
+        </tr>
+    </table>
+    <input id="vol-control" type="range" min="0" max="100" step="1"  oninput="SetSpeed(this.value)" onchange="SetSpeed(this.value)">Speed</input><br>
+    <input id="Light" type="range" min="0" max="1500" step="5"  oninput="SetLight(this.value)" onchange="SetLight(this.value)">Light</input>
+    <div id="voltage">
+        </div>
+    <div id="output">
+    </div>
+</body>
+</html>
