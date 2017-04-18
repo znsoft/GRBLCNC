@@ -51,15 +51,15 @@ int penDelay = 0;
 // Motor steps to go 1 millimeter.
 // Use test sketch to go 100 steps. Measure the length of line.
 // Calculate steps per mm. Enter here.
-float StepsPerMillimeterX = 100.0;
-float StepsPerMillimeterY = 100.0;
+float StepsPerMillimeterX = 4.0/3.4*100.0;
+float StepsPerMillimeterY = 4.0/3.4*100.0;
 
 // Drawing robot limits, in mm
 // OK to start with. Could go up to 50 mm if calibrated well.
 float Xmin = 0;
-float Xmax = 45;
+float Xmax = 40;
 float Ymin = 0;
-float Ymax = 45;
+float Ymax = 40;
 float Zmin = 0;
 float Zmax = 1;
 float scale = 1;

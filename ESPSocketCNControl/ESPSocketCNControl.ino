@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "pin_mux_register.h"
+//#include "pin_mux_register.h"
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <WebSocketsServer.h>
@@ -10,47 +10,135 @@
 
 const char* ssid = "CNCLaser4x4";
 
-#define LED 13
-
 WebSocketsServer webSocket = WebSocketsServer(81);
+IPAddress ip;
+
 ADC_MODE(ADC_VCC);
 
 ESP8266WebServer server(80);
 std::unique_ptr<DNSServer>        dnsServer;
+String inputString = "";  
+
+uint8_t gnum = 0;
+
+void setup() {
+   inputString.reserve(200);
+Serial.begin(9600);
+  SPIFFS.begin();
+  {
+    Dir dir = SPIFFS.openDir("/");
+    while (dir.next()) {
+      String fileName = dir.fileName();
+      size_t fileSize = dir.fileSize();
+    }
+  }
+
+  WiFi.mode(WIFI_AP);
+  /* You can remove the password parameter if you want the AP to be open. */
+  WiFi.softAP(ssid);
+  // Connect tp Wifi
+
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+  dnsServer.reset(new DNSServer());
+  /* Setup the DNS server redirecting all the domains to the apIP */
+  dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
+  dnsServer->start(53, "*", WiFi.softAPIP());
+  //SERVER INIT
+  //list directory
+  server.on("/generate_204", handleRoot);  //Android/Chrome OS captive portal check.
+  server.on("/fwlink", handleRoot);  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
+
+  server.on("/list", HTTP_GET, handleFileList);
+  //load editor
+  server.on("/edit", HTTP_GET, []() {
+    if (!handleFileRead("/edit.htm")) server.send(404, "text/plain", "FileNotFound");
+  });
+  //create file
+  server.on("/edit", HTTP_PUT, handleFileCreate);
+  //delete file
+  server.on("/edit", HTTP_DELETE, handleFileDelete);
+  //first callback is called after the request has ended with all parsed arguments
+  //second callback handles file uploads at that location
+  server.on("/edit", HTTP_POST, []() {
+    server.send(200, "text/plain", "");
+  }, handleFileUpload);
+
+
+  //called when the url is not defined here
+  //use it to load content from SPIFFS
+  server.onNotFound([]() {
+    if (!handleFileRead(server.uri()))
+      server.send(404, "text/plain", "FileNotFound");
+  });
+
+  //get heap status, analog input value and all GPIO statuses in one json call
+  server.on("/all", HTTP_GET, []() {
+    String json = "{";
+    json += "\"heap\":" + String(ESP.getFreeHeap());
+    json += ", \"analog\":" + String(ESP.getVcc());
+    json += ", \"gpio\":" + String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
+    json += "}";
+    server.send(200, "text/json", json);
+    json = String();
+  });
+  server.begin();
+}
+
+
+void loop() {
+
+  dnsServer->processNextRequest();
+
+  server.handleClient();
+
+  webSocket.loop();
+
+
+}
+
+/*
+  SerialEvent occurs whenever a new data comes in the
+ hardware serial RX.  This routine is run between each
+ time loop() runs, so using delay inside loop can delay
+ response.  Multiple bytes of data may be available.
+ */
+void serialEvent() {
+  while (Serial.available()) {
+    // get the new byte:
+    char inChar = (char)Serial.read();
+    // add it to the inputString:
+    inputString += inChar;
+    // if the incoming character is a newline, set a flag
+    // so the main loop can do something about it:
+    if (inChar == '\n') {
+       webSocket.sendTXT(gnum, inputString);
+       inputString = "";
+    }
+  }
+}
+
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t lenght) {
-  String vol = String(ESP.getVcc(), DEC);
-  //uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
-
+  //String vol = String(ESP.getVcc(), DEC);
+  
+  
   switch (type) {
     case WStype_DISCONNECTED:
 
       break;
+      
     case WStype_CONNECTED:
-      {
-        IPAddress ip = webSocket.remoteIP(num);
-        webSocket.sendTXT(num, vol);
-        //digitalWrite(LED, HIGH );
-      }
-      //webSocket.sendTXT(num, "C");
+      gnum = num;
+        //IPAddress ip = webSocket.remoteIP(num);
       break;
+      
     case WStype_TEXT:
-
-      // send data to all connected clients
-      // webSocket.broadcastTXT("message here");
-
-      switch (payload[0]) {
-        case 'e': case 'E':   //Echo
-          break;
-
-        default:
-          break;
-
-      }
-      webSocket.sendTXT(num, vol);
+      Serial.printf("%s\n", payload);
       break;
 
     case WStype_BIN:
+    
       break;
   }
 }
@@ -179,83 +267,6 @@ void handleFileList() {
 
 void handleRoot() {
   handleFileRead("/");
-
-}
-
-
-
-void setup() {
-
-  SPIFFS.begin();
-  {
-    Dir dir = SPIFFS.openDir("/");
-    while (dir.next()) {
-      String fileName = dir.fileName();
-      size_t fileSize = dir.fileSize();
-    }
-  }
-
-  WiFi.mode(WIFI_AP);
-  /* You can remove the password parameter if you want the AP to be open. */
-  WiFi.softAP(ssid);
-  // Connect tp Wifi
-
-  webSocket.begin();
-  webSocket.onEvent(webSocketEvent);
-  dnsServer.reset(new DNSServer());
-  /* Setup the DNS server redirecting all the domains to the apIP */
-  dnsServer->setErrorReplyCode(DNSReplyCode::NoError);
-  dnsServer->start(53, "*", WiFi.softAPIP());
-  //SERVER INIT
-  //list directory
-  server.on("/generate_204", handleRoot);  //Android/Chrome OS captive portal check.
-  server.on("/fwlink", handleRoot);  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
-
-  server.on("/list", HTTP_GET, handleFileList);
-  //load editor
-  server.on("/edit", HTTP_GET, []() {
-    if (!handleFileRead("/edit.htm")) server.send(404, "text/plain", "FileNotFound");
-  });
-  //create file
-  server.on("/edit", HTTP_PUT, handleFileCreate);
-  //delete file
-  server.on("/edit", HTTP_DELETE, handleFileDelete);
-  //first callback is called after the request has ended with all parsed arguments
-  //second callback handles file uploads at that location
-  server.on("/edit", HTTP_POST, []() {
-    server.send(200, "text/plain", "");
-  }, handleFileUpload);
-
-
-  //called when the url is not defined here
-  //use it to load content from SPIFFS
-  server.onNotFound([]() {
-    if (!handleFileRead(server.uri()))
-      server.send(404, "text/plain", "FileNotFound");
-  });
-
-  //get heap status, analog input value and all GPIO statuses in one json call
-  server.on("/all", HTTP_GET, []() {
-    String json = "{";
-    json += "\"heap\":" + String(ESP.getFreeHeap());
-    json += ", \"analog\":" + String(ESP.getVcc());
-    json += ", \"gpio\":" + String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
-    json += "}";
-    server.send(200, "text/json", json);
-    json = String();
-  });
-  server.begin();
-}
-
-
-void loop() {
-
-  dnsServer->processNextRequest();
-
-  server.handleClient();
-
-  webSocket.loop();
-
 
 }
 
