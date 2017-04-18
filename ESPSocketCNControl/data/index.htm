@@ -103,9 +103,9 @@
 
 
 <input type="file" id="Gfile" onchange="previewFile()"><br>
-Gcode:
-<pre id="Gcode" contenteditable="true"></pre>
-
+Gcode:<br>
+<pre id="Gcode" contenteditable="true"></pre><br>
+<input type="button" value="Send" onclick="doSendGcode()" /><br>
 
 <script language="javascript" type="text/javascript">
 
@@ -137,7 +137,9 @@ function previewFile() {
   }
 }
 
+function doSendGcode(){
 
+}
  
 
 function draw(event) {
@@ -221,7 +223,7 @@ function updateCanvas() {
 
   function onMessage(evt)
   {
-    document.getElementById("voltage").innerHTML = (evt.data/1000) + " V";
+    //document.getElementById("voltage").innerHTML = (evt.data/1000) + " V";
     //websocket.close();
   }
 
@@ -243,28 +245,10 @@ function updateCanvas() {
     output.appendChild(pre);
   }
 
-   function mouseCoords(e) {
-    if (document.all)  { 
-      x = event.x + document.body.scrollLeft; 
-      y = event.y + document.body.scrollTop; 
-    } else {
-      x = e.pageX; 
-      y = e.pageY; 
-    }
-   // output.innerHTML = "X : " + x + ", Y : " + y;
-   }
+
 
   window.addEventListener("load", init, false);
-  window.setInterval("doSend('v')" , 1000);
-  
-function Button1_onclick() {
 
-}
-//bflksonrm
-//fmnsrbklx
-function Button1_onclick() {
-
-}
 
 </script>
 
