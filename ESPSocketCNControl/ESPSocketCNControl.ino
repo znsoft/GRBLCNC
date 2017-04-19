@@ -94,6 +94,7 @@ void loop() {
 
   webSocket.loop();
 
+if(Serial.available())serEvent();
 
 }
 
@@ -103,7 +104,7 @@ void loop() {
  time loop() runs, so using delay inside loop can delay
  response.  Multiple bytes of data may be available.
  */
-void serialEvent() {
+void serEvent() {
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();

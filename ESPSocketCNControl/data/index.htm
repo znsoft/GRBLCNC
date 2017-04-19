@@ -83,10 +83,6 @@
     {
         font-size: small;
     }
-    .style2
-    {
-        text-align: left;
-    }
       #byte_content {
     margin: 5px 0;
     max-height: 100px;
@@ -97,33 +93,45 @@
 </style>
 
 <div class="CanvasContainer">
-    <canvas id="drawingCanvas" width="500" height="300"></canvas>
+    <canvas id="drawingCanvas" width="40" height="40"></canvas>
 </div>
 
 
 
-<input type="file" id="Gfile" onchange="previewFile()"><br>
+<input type="button" value="Send" onclick="doSendGcode()" /><input type="file" id="Gfile" onchange="previewFile()"><br>
 Gcode:<br>
 <pre id="Gcode" contenteditable="true"></pre><br>
-<input type="button" value="Send" onclick="doSendGcode()" /><br>
+<br>
 
 <script language="javascript" type="text/javascript">
-
+var x=0,y=0,on=false;
   var wsUri = "ws://192.168.4.1:81";
   var output;
   var speed;
-
+var curPos = 0;
 var canvas;
 var context;
 var canvasData;
-//var canvasWidth;// = canvas.width;
-//var canvasHeight;// = canvas.height;
+ var preview = document.getElementById('Gcode');
+var isRun = false;
+
+var regex = /.*[^\n]/gmi;
+
+function GetGmsg(str) {
+let m;
+if((m = regex.exec(str)) == null) return null;
+    if (m.index === regex.lastIndex) 
+        regex.lastIndex++;
+    return m[0];
+}
+
+
+
 
 function previewFile() {
-  var preview = document.getElementById('Gcode');
+ 
   var file    = document.getElementById('Gfile').files[0];
   var reader  = new FileReader();
-
   reader.onloadend = function (evt) {
    console.log(reader.result);
   if (reader.readyState != FileReader.DONE)return;
@@ -138,9 +146,55 @@ function previewFile() {
 }
 
 function doSendGcode(){
-
+regex = /.*[^\n]/gmi;
+isRun = true;
+sendNextstr();
 }
  
+function sendNextstr(){
+t = preview.innerText;
+s = GetGmsg(t);
+if (s==null)isRun = false;
+console.log(s);
+doSend(s);
+}
+
+
+function right(){
+x++;
+doSend("G"+(on?"1":"0")+" X"+x);
+}
+
+function left(){
+x--;
+doSend("G"+(on?"1":"0")+" X"+x);
+}
+
+function fwd(){
+y++;
+doSend("G"+(on?"1":"0")+" Y"+y);
+}
+
+function back(){
+y--;
+doSend("G"+(on?"1":"0")+" Y"+y);
+}
+
+function home(){
+y=0;x=0;on=false;
+doSend("G0 X0 Y0");
+}
+
+function laserOn(){
+on=true;
+doSend("D ");
+}
+
+function laserOff(){
+on=false;
+doSend("U ");
+}
+
 
 function draw(event) {
  var x = event.pageX - this.offsetLeft;
@@ -150,7 +204,7 @@ function draw(event) {
 	  var R = img_data[0];
 	  var G = img_data[1] + R*256;
 	  var B = img_data[2] + G*256;
-      websocket.send('#'+B.toString(16));
+      //websocket.send('#'+B.toString(16));
 }
 
 
@@ -161,13 +215,8 @@ window.onload = function() {
       canvas = document.getElementById("drawingCanvas");
       context = canvas.getContext("2d");
       canvasData = context.getImageData(0, 0, canvas.width, canvas.height); 
-      // Подключаем требуемые для рисования события
-
      init();
-     
-    
      //updateCanvas();   
-     
    }
 
 
@@ -213,6 +262,7 @@ function updateCanvas() {
   function onOpen(evt)
   {
     output.innerHTML = "CONNECTED";
+    if(isRun)sendNextstr();
   }
 
   function onClose(evt)
@@ -223,6 +273,8 @@ function updateCanvas() {
 
   function onMessage(evt)
   {
+  console.log(evt.data);
+    if(isRun)sendNextstr();
     //document.getElementById("voltage").innerHTML = (evt.data/1000) + " V";
     //websocket.close();
   }
@@ -254,62 +306,44 @@ function updateCanvas() {
 
 <body>
     <h6 style="height: 2px; width: 262px">
-        Led control</h6>
+        control</h6>
     <table id="buttons" cellpadding="2" style="width: 259px; height: 169px; background-color: #FFCC99;">
         <tr>
             <td class="style1">
-    <input type="button" value="XStrobo" onclick="doSend('e')" /><br>
-                <input type="button" value="Demo L" onclick="doSend('l')" />
+    <input type="button" value="Home" onclick="home()" /><br>
             </td>
             <td>
-                <button onclick='doSend("f")' class="style1">
-                    Fill</button>
-                <span class="style1">&nbsp; </span>
+                <button onclick='fwd()' class="style1">
+                    Y+1</button>
             </td>
             <td>
-                <button onclick='doSend("m")' class="style1">
-                    <div class="style2">
-                        SlowMove</div>
-                </button>
-                <span class="style1">&nbsp; </span>
             </td>
         </tr>
         <tr>
             <td>
-                <button onmousedown='doSend("n")' class="style1">
-                    Random</button>
-                <span class="style1">&nbsp; </span>
+                <button onmousedown='left()' class="style1">
+                    X-1</button>
             </td>
             <td>
-                <button onclick='doSend("s")' class="style1">
-                    <div class="style2">
-                        Rainbow</div>
-                </button>
-                <span class="style1">&nbsp; </span>
-            </td>
+    <input type="button" value="On" onclick="laserOn()"  /></td>
             <td>
-                <button onmousedown='doSend("r")' class="style1">
-                    Star</button>
-                <span class="style1">&nbsp; </span>
+                <button onmousedown='right()' class="style1">
+                    X+1</button>
             </td>
         </tr>
         <tr>
             <td class="style1">
-                <input type="button" value="Demo O" onclick="doSend('o')" />
-            </td>
+                &nbsp;</td>
             <td>
-                <button onclick='doSend("b")' class="style1">
-                    Run</button>
-                <span class="style1">&nbsp; </span>
+                <button onclick='back()' class="style1">
+                    Y-1</button>
             </td>
             <td class="style1">
-                <input type="button" value="Demo K" onclick="doSend('k')" />
-                    <input type="button" value="Ping" onclick="doSend('p')" /><br>
-    <input type="button" value="XFade" onclick="doSend('X')" /><br>
-
-            </td>
+    <input type="button" value="Off" onclick="laserOff()" /></td>
         </tr>
     </table>
+    
+    
     <input id="vol-control" type="range" min="0" max="100" step="1"  oninput="SetSpeed(this.value)" onchange="SetSpeed(this.value)">Speed</input><br>
     <input id="Light" type="range" min="0" max="1500" step="5"  oninput="SetLight(this.value)" onchange="SetLight(this.value)">Light</input>
     <div id="voltage">

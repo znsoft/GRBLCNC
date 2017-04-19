@@ -43,7 +43,7 @@ struct point actuatorPos;
 
 //  Drawing settings, should be OK
 float StepInc = 1;
-int StepDelayOff = 1;//for fine step
+int StepDelayOff = 2;//for fine step
 int StepDelayOn = 3;
 int LineDelay = 0;
 int penDelay = 0;
@@ -51,8 +51,8 @@ int penDelay = 0;
 // Motor steps to go 1 millimeter.
 // Use test sketch to go 100 steps. Measure the length of line.
 // Calculate steps per mm. Enter here.
-float StepsPerMillimeterX = 4.0/3.4*100.0;
-float StepsPerMillimeterY = 4.0/3.4*100.0;
+float StepsPerMillimeterX = 118.0;
+float StepsPerMillimeterY = 118.0;
 
 // Drawing robot limits, in mm
 // OK to start with. Could go up to 50 mm if calibrated well.
