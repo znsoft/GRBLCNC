@@ -51,8 +51,8 @@ int penDelay = 0;
 // Motor steps to go 1 millimeter.
 // Use test sketch to go 100 steps. Measure the length of line.
 // Calculate steps per mm. Enter here.
-float StepsPerMillimeterX = 118.0;
-float StepsPerMillimeterY = 118.0;
+float StepsPerMillimeterX = 117.9;
+float StepsPerMillimeterY = 117.9;
 
 // Drawing robot limits, in mm
 // OK to start with. Could go up to 50 mm if calibrated well.
@@ -134,7 +134,7 @@ void loop()
     // Serial reception - Mostly from Grbl, added semicolon support
     while ( Serial.available() > 0 ) {
       c = Serial.read();
-      if (( c == '\n') || (c == '\r') ) {             // End of line reached
+      if (( c == '\n')  ) {             // End of line reached
         if ( lineIndex > 0 ) {                        // Line is complete. Then execute!
           line[ lineIndex ] = '\0';                   // Terminate string
           if (verbose) {
@@ -245,7 +245,7 @@ void processLinear( struct point newPos, char* line,  int currentIndex) {
 }
 
 void processIncomingLine( char* line, int charNB ) {
-  int currentIndex = 0, g;
+  int currentIndex = 0, g,z;
   char* indexSpace;
   char buffer[ 64 ];                                 // Hope that 64 is enough for 1 parameter
   struct point newPos;
@@ -325,12 +325,28 @@ void processIncomingLine( char* line, int charNB ) {
         }
         break;
       case 'T':
-        buffer[0] = line[ currentIndex++ ];        // /!\ Dirty - Only works with 3 digit commands
-        buffer[1] = line[ currentIndex++ ];
-        buffer[2] = line[ currentIndex++ ];
-        buffer[3] = '\0';
-        StepDelayOn = atoi( buffer );
 
+
+
+        indexSpace = strchr( line + currentIndex, ' ' );
+        indexSpace = '\0';
+        g = atoi( line + currentIndex );
+
+        if (verbose)Serial.println(g);
+        
+        switch (g  ) {                  // Select G command
+
+          case 0:                                   // G00 & G01 - Movement or movement with laser
+            StepDelayOff = getIntParam(line + currentIndex, 'W', StepDelayOff);
+            break;
+
+          case 1:
+           StepDelayOn = getIntParam(line + currentIndex, 'W', StepDelayOn);
+            break;
+
+      default:
+        StepDelayOn = g;
+        }
 
         break;
       case 'M':

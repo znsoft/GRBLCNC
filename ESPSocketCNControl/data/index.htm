@@ -114,7 +114,7 @@ var context;
 var canvasData;
  var preview = document.getElementById('Gcode');
 var isRun = false;
-
+var lastCmd = null;
 var regex = /.*[^\n]/gmi;
 
 function GetGmsg(str) {
@@ -133,7 +133,7 @@ function previewFile() {
   var file    = document.getElementById('Gfile').files[0];
   var reader  = new FileReader();
   reader.onloadend = function (evt) {
-   console.log(reader.result);
+   //console.log(reader.result);
   if (reader.readyState != FileReader.DONE)return;
     preview.textContent = reader.result;;
   }
@@ -148,15 +148,19 @@ function previewFile() {
 function doSendGcode(){
 regex = /.*[^\n]/gmi;
 isRun = true;
+lastCmd = null;
 sendNextstr();
 }
  
 function sendNextstr(){
+if(lastCmd != null|| !isRun) return;
 t = preview.innerText;
 s = GetGmsg(t);
+lastCmd = s;
 if (s==null)isRun = false;
 console.log(s);
 doSend(s);
+lastCmd = null;
 }
 
 
