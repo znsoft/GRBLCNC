@@ -83,27 +83,34 @@
     {
         font-size: small;
     }
-      #byte_content {
-    margin: 5px 0;
-    max-height: 100px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  #byte_range { margin-top: 5px; }
+    #byte_content
+    {
+        margin: 5px 0;
+        max-height: 100px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    #byte_range
+    {
+        margin-top: 5px;
+    }
 </style>
-
+<input id="ScaleControl" type="range" min="1" max="10" step="1" value="10" oninput="SetScale(this.value)"
+    onchange="SetScale(this.value)">Scale</input>
 <div class="CanvasContainer">
-    <canvas id="drawingCanvas" width="40" height="40"></canvas><pre id="info"></pre>
+    <canvas id="drawingCanvas" width="40" height="40"></canvas>
+    <pre id="info">
+</pre>
 </div>
-
-
-
-<input type="button" value="Send" onclick="doSendGcode()" /><input type="file" id="Gfile" onchange="previewFile()"><br>
+<input type="button" value="Send" onclick="doSendGcode()" /><input type="file" id="Gfile"
+    onchange="previewFile()"><br>
 Gcode:<br>
-<pre id="Gcode" contenteditable="true"></pre><br>
+<pre id="Gcode" contenteditable="true"></pre>
+<br>
 <br>
 
 <script language="javascript" type="text/javascript">
+var scale=10,sizeX=40,sizeY=40,light = 128;
 var x=0,y=0,on=false;
   var wsUri = "ws://192.168.4.1:81";
   var output;
@@ -117,6 +124,8 @@ var canvasData;
 var isRun = false;
 var lastCmd = null;
 var regex = /.*[^\n]/gmi;
+var im = document.getElementById('imageTest');
+
 
 function setProcText(index){
     info.textContent = ""+index+"/"+preview.textContent.length;
@@ -139,9 +148,17 @@ function previewImageFile(){
 
         reader.onload = function (e) {
 //              console.log(e.target.result);
-img = new Image();
-img.src = e.target.result;
-        context.drawImage(img, 0, 0);
+        img = new Image();
+        img.onload=function(){
+        //canvas.width=40;
+        //canvas.height=40;
+        im.src = e.target.result;
+        context.drawImage(img,0,0,img.width,img.height,0,0,canvas.width,canvas.height);
+        grayScale();
+    }
+        img.src = e.target.result;
+
+        //context.drawImage(img, 0, 0);
 
         }
 
@@ -232,35 +249,68 @@ on=false;
 doSend("U ");
 }
 
+function GenerateGcode_onclick() {
+canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
+preview.innerText = GenerateGcode()+"\nG0 X0 Y0";
 
-function draw(event) {
- var x = event.pageX - this.offsetLeft;
-	  var y = event.pageY - this.offsetTop;
-	  // getting image data and RGB values
-	  var img_data = context.getImageData(x, y, 1, 1).data;
-	  var R = img_data[0];
-	  var G = img_data[1] + R*256;
-	  var B = img_data[2] + G*256;
-      //websocket.send('#'+B.toString(16));
 }
 
+function GenerateGcode(){
+var x,y,x1,y1,x2,y2,trace,GcodeString="";
+
+for(y=0;y<=canvas.height;y++){
+trace = false; ii = y&1;
+    for(x=ii * canvas.width;x!=(!ii)*canvas.width;x+=ii?-1:1){
+        if(trace==false){
+            if(GetPixelLev(x, y)==0){
+                trace = true;
+                  GcodeString = ADDGCode(GcodeString,'G0',x,y);
+                
+            }
+        }else{
+            if(GetPixelLev(x, y)!=0){
+                trace = false;
+                GcodeString = ADDGCode(GcodeString,'G1',x,y);
+                }
+
+            }
 
 
+        }
+        if(trace==true)GcodeString = ADDGCode(GcodeString,'G1',x,y);
+    }
+    return GcodeString;
+}
+
+function ADDGCode(GcodeString,sym,x,y){
+GcodeString = GcodeString + sym + ' X' + x/scale +' Y'+ y/scale+' \n';
+return GcodeString;
+}
+
+ function grayScale() {
+    var imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        var pixels  = imgData.data;
+        for (var i = 0, n = pixels.length; i < n; i += 4) {
+        var grayscale = pixels[i] * .3 + pixels[i+1] * .59 + pixels[i+2] * .11;
+        grayscale =(grayscale>light)?255:0;
+        pixels[i  ] = grayscale;        // red
+        pixels[i+1] = grayscale;        // green
+        pixels[i+2] = grayscale;        // blue
+        //pixels[i+3]              is alpha
+    }
+    context.putImageData(imgData, 0, 0);
+  }
 
 
-window.onload = function() {
-      canvas = document.getElementById("drawingCanvas");
-      context = canvas.getContext("2d");
-      canvasData = context.getImageData(0, 0, canvas.width, canvas.height); 
-     init();
-     //updateCanvas();   
-   }
-
-
-
-
-//var canvas = document.getElementById("myCanvas");
-//var ctx = canvas.getContext("2d");
+function refreshCanvas(){
+canvas.width = sizeX * scale;
+canvas.height = sizeY * scale;
+context = canvas.getContext("2d");
+if(im!=null && im.src!='')
+        context.drawImage(im,0,0,im.width,im.height,0,0,canvas.width,canvas.height);
+grayScale();
+canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
+}
 
 
 // That's how you define the value of a pixel //
@@ -271,6 +321,11 @@ function drawPixel (x, y, r, g, b, a) {
     canvasData.data[index + 1] = g;
     canvasData.data[index + 2] = b;
     canvasData.data[index + 3] = a;
+}
+
+function GetPixelLev(x, y) {
+    var index = (x + y * canvas.width) * 4;
+    return canvasData.data[index];
 }
 
 // That's how you update the canvas, so that your //
@@ -310,10 +365,8 @@ function updateCanvas() {
 
   function onMessage(evt)
   {
-  console.log(evt.data);
+    console.log(evt.data);
     if(isRun)sendNextstr();
-    //document.getElementById("voltage").innerHTML = (evt.data/1000) + " V";
-    //websocket.close();
   }
 
   function onError(evt)
@@ -334,9 +387,27 @@ function updateCanvas() {
     output.appendChild(pre);
   }
 
+    function SetScale(s){
+        scale = s;
+        refreshCanvas();
+    }
+
+    function SetLight(l){
+    light = l;
+    refreshCanvas();
+    }
 
 
-  window.addEventListener("load", init, false);
+window.onload = function() {
+        im = document.getElementById('imageTest');
+      canvas = document.getElementById("drawingCanvas");
+      sizeX =  canvas.width;
+      sizeY = canvas.height;
+      scale = document.getElementById("ScaleControl").value;
+      refreshCanvas();
+     init();
+     //updateCanvas();   
+   }
 
 
 </script>
@@ -347,7 +418,7 @@ function updateCanvas() {
     <table id="buttons" cellpadding="2" style="width: 259px; height: 169px; background-color: #FFCC99;">
         <tr>
             <td class="style1">
-    <input type="button" value="Home" onclick="home()" /><br>
+                <input type="button" value="Home" onclick="home()" /><br>
             </td>
             <td>
                 <button onclick='fwd()' class="style1">
@@ -362,7 +433,8 @@ function updateCanvas() {
                     X-1</button>
             </td>
             <td>
-    <input type="button" value="On" onclick="laserOn()"  /></td>
+                <input type="button" value="On" onclick="laserOn()" />
+            </td>
             <td>
                 <button onmousedown='right()' class="style1">
                     X+1</button>
@@ -370,23 +442,27 @@ function updateCanvas() {
         </tr>
         <tr>
             <td class="style1">
-                &nbsp;</td>
+                &nbsp;
+            </td>
             <td>
                 <button onclick='back()' class="style1">
                     Y-1</button>
             </td>
             <td class="style1">
-    <input type="button" value="Off" onclick="laserOff()" /></td>
+                <input type="button" value="Off" onclick="laserOff()" />
+            </td>
         </tr>
     </table>
-    
-  <input type="file" id="ImageFile1" onchange="previewImageFile()"><br>
-    
-    <input id="vol-control" type="range" min="0" max="100" step="1"  oninput="SetSpeed(this.value)" onchange="SetSpeed(this.value)">Speed</input><br>
-    <input id="Light" type="range" min="0" max="1500" step="5"  oninput="SetLight(this.value)" onchange="SetLight(this.value)">Light</input>
+    <input type="file" id="ImageFile1" onchange="previewImageFile()"><br>
+    <input id="Generate" type="button" value="Generate G-Code" 
+    onclick="GenerateGcode_onclick()" /><br>
+    <input id="Light" type="range" min="0" max="255" step="1" oninput="SetLight(this.value)"
+        onchange="SetLight(this.value)">Light</input>
     <div id="voltage">
-        </div>
+    </div>
     <div id="output">
     </div>
+    <p>
+        <img id="imageTest" alt="" src="" /></p>
 </body>
 </html>
