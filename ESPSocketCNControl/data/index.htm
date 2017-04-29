@@ -93,7 +93,7 @@
 </style>
 
 <div class="CanvasContainer">
-    <canvas id="drawingCanvas" width="40" height="40"></canvas>
+    <canvas id="drawingCanvas" width="40" height="40"></canvas><pre id="info"></pre>
 </div>
 
 
@@ -113,20 +113,41 @@ var canvas;
 var context;
 var canvasData;
  var preview = document.getElementById('Gcode');
+ var info = document.getElementById('info');
 var isRun = false;
 var lastCmd = null;
 var regex = /.*[^\n]/gmi;
+
+function setProcText(index){
+    info.textContent = ""+index+"/"+preview.textContent.length;
+}
+
 
 function GetGmsg(str) {
 let m;
 if((m = regex.exec(str)) == null) return null;
     if (m.index === regex.lastIndex) 
         regex.lastIndex++;
+     setProcText(m.index);
     return m[0];
 }
 
 
+function previewImageFile(){
+  var Imagefile    = document.getElementById('ImageFile1').files[0];
+  var reader = new FileReader();
 
+        reader.onload = function (e) {
+//              console.log(e.target.result);
+img = new Image();
+img.src = e.target.result;
+        context.drawImage(img, 0, 0);
+
+        }
+
+        reader.readAsDataURL(Imagefile);
+  
+}
 
 function previewFile() {
  
@@ -151,11 +172,23 @@ isRun = true;
 lastCmd = null;
 sendNextstr();
 }
+
+function SetXY(s){
+//l = s.toLowerCase();
+//eval(/x(\d+)/gmi.exec('G1 x10 Y12')[1]);
+var regX = /x(\d+)/gmi.exec(s);
+var regY = /y(\d+)/gmi.exec(s);
+if(regX!=null)x = eval(regX[1]);
+if(regY!=null)y = eval(regY[1]);
+drawPixel (x, y, 255, 0, 255, 255);
+updateCanvas();   
+}
  
 function sendNextstr(){
 if(lastCmd != null|| !isRun) return;
 t = preview.innerText;
 s = GetGmsg(t);
+SetXY(s);
 lastCmd = s;
 if (s==null)isRun = false;
 console.log(s);
@@ -347,6 +380,7 @@ function updateCanvas() {
         </tr>
     </table>
     
+  <input type="file" id="ImageFile1" onchange="previewImageFile()"><br>
     
     <input id="vol-control" type="range" min="0" max="100" step="1"  oninput="SetSpeed(this.value)" onchange="SetSpeed(this.value)">Speed</input><br>
     <input id="Light" type="range" min="0" max="1500" step="5"  oninput="SetLight(this.value)" onchange="SetLight(this.value)">Light</input>
