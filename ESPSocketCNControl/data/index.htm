@@ -1,4 +1,4 @@
-<html>
+﻿<html>
 <meta charset="utf-8" />
 <title>CNC</title>
 <style>
@@ -96,59 +96,70 @@
     }
 </style>
 <input id="ScaleControl" type="range" min="1" max="10" step="1" value="10" oninput="SetScale(this.value)"
-    onchange="SetScale(this.value)">Scale</input>
+       onchange="SetScale(this.value)">Scale</input>
+<br>
+<input type="file" id="ImageFile1" onchange="previewImageFile()">
+<input id="Generate"
+       type="button" value="Generate G-Code" onclick="GenerateGcode_onclick()" />
+<input id="useVectorize" title="Use Vector" type="checkbox" value="on">Use Vectorize</input>
+<br>
+<br>
+<input id="Light" type="range" min="0" max="255" step="1" oninput="SetLight(this.value)"
+       onchange="SetLight(this.value)">Light</input>
 <div class="CanvasContainer">
     <canvas id="drawingCanvas" width="40" height="40"></canvas>
     <pre id="info">
 </pre>
 </div>
-<input type="button" value="Send" onclick="doSendGcode()" /><input type="file" id="Gfile"
-    onchange="previewFile()"><br>
-Gcode:<br>
+<input type="button" value="Send" onclick="doSendGcode()" />
+<input type="file" id="Gfile"
+       onchange="previewFile()">
+<br>
+Gcode:
+<br>
 <pre id="Gcode" contenteditable="true"></pre>
 <br>
 <br>
-
 <script language="javascript" type="text/javascript">
-  var scale=10,sizeX=40,sizeY=40,light = 128;
-  var x=0,y=0,on=false;
-  var wsUri = "ws://192.168.4.1:81";
-  var output;
-  var speed;
-  var curPos = 0;
-  var canvas;
-  var context;
-  var canvasData;
-  var preview = document.getElementById('Gcode');
-  var info = document.getElementById('info');
-  var isRun = false;
-  var lastCmd = null;
-  var regex = /.*[^\n]/gmi;
-  var im = document.getElementById('imageTest');
+    var scale = 10, sizeX = 40, sizeY = 40, light = 128;
+    var x = 0, y = 0, on = false;
+    var wsUri = "ws://192.168.4.1:81";
+    var output;
+    var speed;
+    var curPos = 0;
+    var canvas;
+    var context;
+    var canvasData;
+    var preview = document.getElementById('Gcode');
+    var info = document.getElementById('info');
+    var isRun = false;
+    var lastCmd = null;
+    var regex = /.*[^\n]/gmi;
+    var im = document.getElementById('imageTest');
+    var smooth = 1;
 
-
-    function setProcText(index){    info.textContent = ""+index+"/"+preview.textContent.length;    }
+    function setProcText(index) { info.textContent = "" + index + "/" + preview.textContent.length; }
 
 
     function GetGmsg(str) {
         let m;
-        if((m = regex.exec(str)) == null) return null;
-        if (m.index === regex.lastIndex) 
-        regex.lastIndex++;
+        if ((m = regex.exec(str)) == null) return null;
+        if (m.index === regex.lastIndex)
+            regex.lastIndex++;
         setProcText(m.index);
         return m[0];
     }
 
 
-    function previewImageFile(){
-    var Imagefile    = document.getElementById('ImageFile1').files[0];
-    var reader = new FileReader();
+    function previewImageFile() {
+        var Imagefile = document.getElementById('ImageFile1').files[0];
+        var reader = new FileReader();
 
         reader.onload = function (e) {
             img = new Image();
-            img.onload=function(){
+            img.onload = function () {
                 im.src = e.target.result;
-                context.drawImage(img,0,0,img.width,img.height,0,0,canvas.width,canvas.height);
+                context.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height);
                 grayScale();
             }
             img.src = e.target.result;
@@ -157,11 +168,11 @@ Gcode:<br>
     }
 
     function previewFile() {
- 
-        var file    = document.getElementById('Gfile').files[0];
-        var reader  = new FileReader();
+
+        var file = document.getElementById('Gfile').files[0];
+        var reader = new FileReader();
         reader.onloadend = function (evt) {
-            if (reader.readyState != FileReader.DONE)return;
+            if (reader.readyState != FileReader.DONE) return;
             preview.textContent = reader.result;;
         }
 
@@ -172,112 +183,117 @@ Gcode:<br>
         }
     }
 
-    function doSendGcode(){
+    function doSendGcode() {
         regex = /.*[^\n]/gmi;
         isRun = true;
         lastCmd = null;
         sendNextstr();
     }
 
-    function SetXY(s){
+    function SetXY(s) {
         var regX = /x(\d+)/gmi.exec(s);
         var regY = /y(\d+)/gmi.exec(s);
-        if(regX!=null)x = eval(regX[1]);
-        if(regY!=null)y = eval(regY[1]);
-        drawPixel (x*scale, y*scale, 255, 0, 255, 255);
-        updateCanvas();   
+        if (regX != null) x = eval(regX[1]);
+        if (regY != null) y = eval(regY[1]);
+        drawPixel(x * scale, y * scale, 255, 0, 255, 255);
+        updateCanvas();
     }
- 
-    function sendNextstr(){
-        if(lastCmd != null|| !isRun) return;
+
+    function sendNextstr() {
+        if (lastCmd != null || !isRun) return;
         t = preview.innerText;
         s = GetGmsg(t);
         SetXY(s);
         lastCmd = s;
-        if (s==null)isRun = false;
+        if (s == null) isRun = false;
         console.log(s);
         doSend(s);
         lastCmd = null;
     }
 
 
-    function right(){
-    x++;
-    doSend("G"+(on?"1":"0")+" X"+x);
+    function right() {
+        x++;
+        doSend("G" + (on ? "1" : "0") + " X" + x);
     }
 
-    function left(){
-    x--;
-    doSend("G"+(on?"1":"0")+" X"+x);
+    function left() {
+        x--;
+        doSend("G" + (on ? "1" : "0") + " X" + x);
     }
 
-    function fwd(){
-    y++;
-    doSend("G"+(on?"1":"0")+" Y"+y);
+    function fwd() {
+        y++;
+        doSend("G" + (on ? "1" : "0") + " Y" + y);
     }
 
-    function back(){
-    y--;
-    doSend("G"+(on?"1":"0")+" Y"+y);
+    function back() {
+        y--;
+        doSend("G" + (on ? "1" : "0") + " Y" + y);
     }
 
-    function home(){
-    y=0;x=0;on=false;
-    doSend("G0 X0 Y0");
+    function home() {
+        y = 0; x = 0; on = false;
+        doSend("G0 X0 Y0");
     }
 
-    function laserOn(){
-    on=true;
-    doSend("D ");
+    function laserOn() {
+        on = true;
+        doSend("D ");
     }
 
-    function laserOff(){
-    on=false;
-    doSend("U ");
+    function laserOff() {
+        on = false;
+        doSend("U ");
     }
 
     function GenerateGcode_onclick() {
-    canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
-    if(document.getElementById("useVectorize").checked==true)
-    {
-    ContourGrayScale(); 
-        
-    preview.innerText = ContourWays()+"\nG0 X0 Y0";
-    }else{
-    
-    preview.innerText = GenerateGcode()+"\nG0 X0 Y0";
+        canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
+        if (document.getElementById("useVectorize").checked == true) {
+            canvas.width = sizeX * scale;
+            canvas.height = sizeY * scale;
+            context = canvas.getContext("2d");
+            if (im != null && im.src != '')
+                context.drawImage(im, 0, 0, im.width, im.height, 0, 0, canvas.width, canvas.height);
+            grayScale();
+            ContourGrayScale();
+
+            preview.innerText = ContourWays() + "\nG0 X0 Y0";
+        } else {
+
+            preview.innerText = GenerateGcode() + "\nG0 X0 Y0";
         }
     }
 
-    function GenerateGcode(){
-    var x,y,x1,y1,x2,y2,trace,GcodeString="";
+    function GenerateGcode() {
+        var x, y, x1, y1, x2, y2, trace, GcodeString = "";
 
-    for(y=0;y<=canvas.height;y++){
-    trace = false; ii = y&1;
-        for(x=ii * canvas.width;x!=(!ii)*canvas.width;x+=ii?-1:1){
-            if(trace==false){
-                if(GetPixelLev(x, y)==0){
-                    trace = true;
-                      GcodeString = ADDGCode(GcodeString,'G0',x,y);
-                    
-                }
-            }else{
-                if(GetPixelLev(x, y)!=0){
-                    trace = false;
-                    GcodeString = ADDGCode(GcodeString,'G1',x,y);
+        for (y = 0; y <= canvas.height; y++) {
+            trace = false; ii = y & 1;
+            for (x = ii * canvas.width; x != (!ii) * canvas.width; x += ii ? -1 : 1) {
+                if (trace == false) {
+                    if (GetPixelLev(x, y) == 0) {
+                        trace = true;
+                        GcodeString = ADDGCode(GcodeString, 'G0', x, y);
+
+                    }
+                } else {
+                    if (GetPixelLev(x, y) != 0) {
+                        trace = false;
+                        GcodeString = ADDGCode(GcodeString, 'G1', x, y);
                     }
 
                 }
 
             }
-            if(trace==true)GcodeString = ADDGCode(GcodeString,'G1',x,y);
+            if (trace == true) GcodeString = ADDGCode(GcodeString, 'G1', x, y);
         }
         return GcodeString;
     }
 
-    function ADDGCode(GcodeString,sym,x,y){
-    GcodeString = GcodeString + sym + ' X' + x/scale +' Y'+ y/scale+' \n';
-    return GcodeString;
+    function ADDGCode(GcodeString, sym, x, y) {
+        GcodeString = GcodeString + sym + ' X' + x / scale + ' Y' + y / scale + ' \n';
+        return GcodeString;
     }
 
 
@@ -292,8 +308,16 @@ Gcode:<br>
     function isAt(x, y, c) {
         if (x < 0) return true;
         if (y < 0) return true;
-        if (x > canvas.width) return true;
-        if (y > canvas.height) return true;
+        if (x >= canvas.width) return true;
+        if (y >= canvas.height) return true;
+        return GetPixel(x, y).r == c;
+    }
+
+    function isPathAt(x, y, c) {
+        if (x < 0) return false;
+        if (y < 0) return false;
+        if (x >= canvas.width) return false;
+        if (y >= canvas.height) return false;
         return GetPixel(x, y).r == c;
     }
 
@@ -307,15 +331,15 @@ Gcode:<br>
 
 
     function isEmptyAround(x, y) {
-        return isAround(x , y, EMPTY);
-        }
+        return isAround(x, y, EMPTY);
+    }
 
 
 
     function ContourGrayScale() {
         canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
-        for (var x = 0; x <= canvas.width; x += 1)
-            for (var y = 0; y <= canvas.width; y += 1)
+        for (var x = 0; x < canvas.width; x++)
+            for (var y = 0; y < canvas.height; y++)
                 if (isAt(x, y, FILL)) {
                     if (isEmptyAround(x, y)) drawPixel(x, y, PATH, FILL, FILL, EMPTY); else drawPixel(x, y, NOPATH, EMPTY, EMPTY, EMPTY);
                 }
@@ -324,110 +348,111 @@ Gcode:<br>
 
 
     function ContourWays() {
-    var GcodeString="";
+        var GcodeString = "";
         canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
-        for (var x = 0; x <= canvas.width; x += 1)
-            for (var y = 0; y <= canvas.width; y += 1)
+        for (var x = 0; x < canvas.width; x++)
+            for (var y = 0; y < canvas.height; y++) 
                 if (isAt(x, y, PATH)) GcodeString = GcodeString + findWay(x, y);
-       // context.putImageData(canvasData, 0, 0);
-       return GcodeString;
+        //context.putImageData(canvasData, 0, 0);
+        return GcodeString;
     }
 
 
-function OnLine(x1,y1,x2,y2,ox,oy,r){
+    function OnLine(x1, y1, x2, y2, ox, oy, r) {
 
         var dx = x2 - x1;
         var dy = y2 - y1;
-        var x = ox,    y = oy;
-        
+        var x = ox, y = oy;
+
         if (Math.abs(dx) > Math.abs(dy)) {
             y = y1 + (x - x1) * (dy) / (dx);
         } else {
             x = x1 + (y - y1) * (dx) / (dy);
         }
-//context.beginPath(); 
-//context.lineWidth="3";
-//context.strokeStyle="red"; // Green path
-//context.moveTo(x,y);
-//context.lineTo(x+2,y+2);
-//context.stroke(); // Draw it
-         x= x - ox;
-         y= y - oy;
-         
+        x = x - ox;
+        y = y - oy;
+        return (x * x + y * y) <= r * r;
+    }
 
-        //if (x < x11 || x > x22 || y < y11 || y > y22) return false;
-        return (x*x+y*y )<= r*r;
-}
 
-function isArrayOnLine(x1,y1,x2,y2,a,r){
-for(var i= 0;i<a.length;i++)
-if(!OnLine(x1,y1,x2,y2,a[i].x,a[i].y,r))return false;
-return true;
-}
 
+
+    function isArrayOnLine(x1, y1, x2, y2, a, r) {
+        for (var i = 0; i < a.length; i++)
+            if (!OnLine(x1, y1, x2, y2, a[i].x, a[i].y, r)) return false;
+        return true;
+    }
+
+    function debugLine(x, y, u, v, c, w) {
+        if (x == u && y == v) { u = x + w; v = y + w; }
+        context.beginPath();
+        context.lineWidth = w;
+        context.strokeStyle = c;
+        context.moveTo(x, y);
+        context.lineTo(u, v);
+        context.stroke(); // Draw it
+    }
 
     function findWay(xs, ys) {
-       var x=xs,y=ys,u=x,v=y,n,a=[];
-       var GcodeString = ADDGCode("",'G0',x,y);
-       while(true){
-       
-       n = findNextpointFrom(u,v,PATH);
-       if(n==null){
-       
-   context.beginPath(); 
-context.lineWidth="3";
-context.strokeStyle="blue"; // Green path
-context.moveTo(x,y);
-context.lineTo(u,v);
-context.stroke(); // Draw it
-      a=[];
-      x=u;y=v;
-GcodeString = ADDGCode(GcodeString,'G1',x,y)
-break;       
-       
-       }
-       
-        u = n.x;        v = n.y;
-       drawPixel(u, v, LINE, FILL, FILL, EMPTY);
-       a.push({x:u,y:v});
-      if(!isArrayOnLine(x,y,u,v,a,3)){
-   context.beginPath(); 
-context.lineWidth="3";
-context.strokeStyle="green"; // Green path
-context.moveTo(x,y);
-context.lineTo(u,v);
-context.stroke(); // Draw it
-      a=[];
-      x=u;y=v;
-GcodeString = ADDGCode(GcodeString,'G1',x,y)
+        var x = xs, y = ys, u = x, v = y, n, a = [];
+        var GcodeString = ADDGCode("", 'G0', x, y);
+        drawPixel(u, v, LINE, FILL, LINE, EMPTY);
+        debugLine(x, y, u, v, "black", smooth * 2);
+        while (true) {
 
-      } 
-       }
-       return GcodeString;
+            n = findNextpointFrom(u, v, PATH);
+            if (n == null) {
+
+                debugLine(x, y, u, v, "blue", smooth * 2);
+                a = [];
+                x = u; y = v;
+                drawPixel(u, v, LINE, FILL, LINE, EMPTY);
+                GcodeString = ADDGCode(GcodeString, 'G1', x, y);
+                break;
+            }
+
+            u = n.x; v = n.y;
+            drawPixel(u, v, LINE, FILL, LINE, EMPTY);
+            a.push({ x: u, y: v });
+            if (!isArrayOnLine(x, y, u, v, a, smooth)) {
+                prev = a.pop();
+                prev = a.pop();
+                debugLine(x, y, prev.x, prev.y, "green", smooth * 2);
+                GcodeString = ADDGCode(GcodeString, 'G1', prev.x, prev.y);
+                a = [];
+                
+                x = u; y = v;
+                GcodeString = ADDGCode(GcodeString, 'G1', x, y);
+                drawPixel(u, v, LINE, FILL, LINE, EMPTY);
+            } 
+        }
+        return GcodeString;
     }
 
 
-    function findNextpointFrom(x,y,c) {
-        var u,v;
-        if (GetPixel(x + 1, y).r == c) {u = x + 1;v=y;}
-        if (GetPixel(x - 1, y).r == c) {u = x - 1;v=y;}
-        if (GetPixel(x, y + 1).r == c) {v = y + 1;u=x;}
-        if (GetPixel(x, y - 1).r == c) {v = y - 1;u=x;}
 
-        if (GetPixel(x - 1, y - 1).r == c) { v = y - 1; u = x - 1; }
-        if (GetPixel(x + 1, y + 1).r == c) { v = y + 1; u = x + 1; }
-        if (GetPixel(x - 1, y + 1).r == c) { v = y + 1; u = x - 1; }
-        if (GetPixel(x + 1, y - 1).r == c) { v = y - 1; u = x + 1; }
-        if (u == undefined||v == undefined) return null;
-        return { x: u, y: v };
+
+    function findNextpointFrom(u, v, c) {
+        if (isPathAt(u + 1, v, c)) return { x: u + 1, y: v };
+        if (isPathAt(u - 1, v, c)) return { x: u - 1, y: v };
+        if (isPathAt(u, v + 1, c)) return { x: u, y: v + 1 };
+        if (isPathAt(u, v - 1, c)) return { x: u, y: v - 1 };
+
+        if (isPathAt(u - 1, v - 1, c)) return { x: u - 1, y: v - 1 };
+        if (isPathAt(u + 1, v + 1, c)) return { x: u + 1, y: v + 1 };
+        if (isPathAt(u - 1, v + 1, c)) return { x: u - 1, y: v + 1 };
+        if (isPathAt(u + 1, v - 1, c)) return { x: u + 1, y: v - 1 };
+        return null;
+
     }
+
 
     function grayScale() {
         var imgData = context.getImageData(0, 0, canvas.width, canvas.height);
         var pixels = imgData.data;
         for (var i = 0, n = pixels.length; i < n; i += 4) {
             var grayscale = pixels[i] * .3 + pixels[i + 1] * .59 + pixels[i + 2] * .11;
-            grayscale = pixels[i + 3]/255 * grayscale;
+            grayscale = pixels[i + 3] / 255 * grayscale;
             grayscale = (grayscale > light) ? 255 : 0;
             pixels[i] = grayscale;        // red
             pixels[i + 1] = grayscale;        // green
@@ -435,23 +460,11 @@ GcodeString = ADDGCode(GcodeString,'G1',x,y)
             pixels[i + 3] = 255;   //         is alpha
         }
         context.putImageData(imgData, 0, 0);
-        if(document.getElementById("useVectorize").checked==true)
-        {ContourGrayScale(); 
-        ContourWays();
-        }
+
     }
 
 
-    function refreshCanvas() {
-        canvas.width = sizeX * scale;
-        canvas.height = sizeY * scale;
-        context = canvas.getContext("2d");
-        
-        if (im != null && im.src != '')
-            context.drawImage(im, 0, 0, im.width, im.height, 0, 0, canvas.width, canvas.height);
-        grayScale();
-        canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
-    }
+
 
 
     // That's how you define the value of a pixel //
@@ -484,19 +497,22 @@ GcodeString = ADDGCode(GcodeString,'G1',x,y)
     }
 
 
-    function refreshCanvas(){
-    canvas.width = sizeX * scale;
-    canvas.height = sizeY * scale;
-    context = canvas.getContext("2d");
-    if(im!=null && im.src!='')
-            context.drawImage(im,0,0,im.width,im.height,0,0,canvas.width,canvas.height);
-    grayScale();
-    canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
+    function refreshCanvas() {
+        canvas.width = sizeX * scale;
+        canvas.height = sizeY * scale;
+        context = canvas.getContext("2d");
+        if (im != null && im.src != '')
+            context.drawImage(im, 0, 0, im.width, im.height, 0, 0, canvas.width, canvas.height);
+        grayScale();
+        if (document.getElementById("useVectorize").checked == true) {
+            ContourGrayScale();
+            ContourWays();
+        }
+        canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
     }
 
-
     // That's how you define the value of a pixel //
-    function drawPixel (x, y, r, g, b, a) {
+    function drawPixel(x, y, r, g, b, a) {
         var index = (x + y * canvas.width) * 4;
 
         canvasData.data[index + 0] = r;
@@ -518,85 +534,77 @@ GcodeString = ADDGCode(GcodeString,'G1',x,y)
 
 
 
-  function init()
-  {
-    output = document.getElementById("output");
-    testWebSocket();
-  }
+    function init() {
+        output = document.getElementById("output");
+        testWebSocket();
+    }
 
-  function testWebSocket()
-  {
-    websocket = new WebSocket(wsUri);
-    websocket.onopen = function(evt) { onOpen(evt) };
-    websocket.onclose = function(evt) { onClose(evt) };
-    websocket.onmessage = function(evt) { onMessage(evt) };
-    websocket.onerror = function(evt) { onError(evt) };
-  }
+    function testWebSocket() {
+        websocket = new WebSocket(wsUri);
+        websocket.onopen = function (evt) { onOpen(evt) };
+        websocket.onclose = function (evt) { onClose(evt) };
+        websocket.onmessage = function (evt) { onMessage(evt) };
+        websocket.onerror = function (evt) { onError(evt) };
+    }
 
-  function onOpen(evt)
-  {
-    output.innerHTML = "CONNECTED";
-    if(isRun)sendNextstr();
-  }
+    function onOpen(evt) {
+        output.innerHTML = "CONNECTED";
+        if (isRun) sendNextstr();
+    }
 
-  function onClose(evt)
-  {
-     output.innerHTML = "DISCONNECTED";
-    testWebSocket();
-  }
+    function onClose(evt) {
+        output.innerHTML = "DISCONNECTED";
+        testWebSocket();
+    }
 
-  function onMessage(evt)
-  {
-    console.log(evt.data);
-    if(isRun)sendNextstr();
-  }
+    function onMessage(evt) {
+        console.log(evt.data);
+        if (isRun) sendNextstr();
+    }
 
-  function onError(evt)
-  {
-    writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
-  }
+    function onError(evt) {
+        writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
+    }
 
-  function doSend(message)
-  {
-    websocket.send(message);
-  }
+    function doSend(message) {
+        websocket.send(message);
+    }
 
-  function writeToScreen(message)
-  {
-    var pre = document.createElement("p");
-    pre.style.wordWrap = "break-word";
-    pre.innerHTML = message;
-    output.appendChild(pre);
-  }
+    function writeToScreen(message) {
+        var pre = document.createElement("p");
+        pre.style.wordWrap = "break-word";
+        pre.innerHTML = message;
+        output.appendChild(pre);
+    }
 
-    function SetScale(s){
+    function SetScale(s) {
         scale = s;
         refreshCanvas();
     }
 
-    function SetLight(l){
-    light = l;
-    refreshCanvas();
+    function SetLight(l) {
+        light = l;
+        refreshCanvas();
     }
 
 
-window.onload = function() {
+    window.onload = function () {
         im = document.getElementById('imageTest');
-      canvas = document.getElementById("drawingCanvas");
-      sizeX =  canvas.width;
-      sizeY = canvas.height;
-      scale = document.getElementById("ScaleControl").value;
-      refreshCanvas();
-     init();
-     //updateCanvas();   
-   }
+        canvas = document.getElementById("drawingCanvas");
+        sizeX = canvas.width;
+        sizeY = canvas.height;
+        scale = document.getElementById("ScaleControl").value;
+        refreshCanvas();
+        init();
+        //updateCanvas();
+    }
 
 
 </script>
-
 <body>
     <h6 style="height: 2px; width: 262px">
-        control</h6>
+        control
+    </h6>
     <table id="buttons" cellpadding="2" style="width: 259px; height: 169px; background-color: #FFCC99;">
         <tr>
             <td class="style1">
@@ -604,22 +612,24 @@ window.onload = function() {
             </td>
             <td>
                 <button onclick='fwd()' class="style1">
-                    Y+1</button>
+                    Y+1
+                </button>
             </td>
-            <td>
-            </td>
+            <td></td>
         </tr>
         <tr>
             <td>
                 <button onmousedown='left()' class="style1">
-                    X-1</button>
+                    X-1
+                </button>
             </td>
             <td>
                 <input type="button" value="On" onclick="laserOn()" />
             </td>
             <td>
                 <button onmousedown='right()' class="style1">
-                    X+1</button>
+                    X+1
+                </button>
             </td>
         </tr>
         <tr>
@@ -628,24 +638,20 @@ window.onload = function() {
             </td>
             <td>
                 <button onclick='back()' class="style1">
-                    Y-1</button>
+                    Y-1
+                </button>
             </td>
             <td class="style1">
                 <input type="button" value="Off" onclick="laserOff()" />
             </td>
         </tr>
     </table>
-    <input type="file" id="ImageFile1" onchange="previewImageFile()"><input id="Generate" type="button" value="Generate G-Code" 
-    onclick="GenerateGcode_onclick()" /><input id="useVectorize" 
-    title="Use Vector" type="checkbox" value="on" >Use Vectorize</input><br>
-    <br>
-    <input id="Light" type="range" min="0" max="255" step="1" oninput="SetLight(this.value)"
-        onchange="SetLight(this.value)">Light</input>
     <div id="voltage">
     </div>
     <div id="output">
     </div>
     <p>
-        <img id="imageTest" alt="" src="" /></p>
+        <img id="imageTest" alt="" src="" style="display: none" />
+    </p>
 </body>
 </html>
