@@ -1,9 +1,8 @@
-﻿<html>
+<html>
 <meta charset="utf-8" />
 <title>CNC</title>
 <style>
-    button
-    {
+    button {
         border-style: none;
         border-color: inherit;
         border-width: medium;
@@ -16,20 +15,20 @@
         font-size: 16px;
         width: 13px;
     }
-    #voltage
-    {
+
+    #voltage {
         width: 259px;
     }
-    #output
-    {
+
+    #output {
         width: 259px;
     }
-    body
-    {
+
+    body {
         background: white;
     }
-    .Toolbar
-    {
+
+    .Toolbar {
         float: left;
         font-family: 'Trebuchet MS';
         font-size: 14px;
@@ -41,68 +40,71 @@
         margin-right: 1px;
         border: 1px solid #7B899B;
     }
-    .Toolbar button
-    {
-        padding: 6px;
-        margin: 7px 2px;
-        font-variant: normal;
-        font-size: 12px;
-    }
-    .CanvasContainer
-    {
+
+        .Toolbar button {
+            padding: 6px;
+            margin: 7px 2px;
+            font-variant: normal;
+            font-size: 12px;
+        }
+
+    .CanvasContainer {
         clear: both;
     }
-    canvas
-    {
+
+    canvas {
         border: 1px solid #7B899B;
     }
-    img
-    {
+
+    img {
         padding: 2px;
         border: 2px solid #F2F7FE;
     }
-    img:hover
-    {
-        border: 2px groove #E4F0FE;
-        background: white;
-    }
-    img.Selected
-    {
-        border: 2px groove #E4F0FE;
-    }
-    #savedCopyContainer
-    {
+
+        img:hover {
+            border: 2px groove #E4F0FE;
+            background: white;
+        }
+
+        img.Selected {
+            border: 2px groove #E4F0FE;
+        }
+
+    #savedCopyContainer {
         display: none;
     }
-    #savedCopyContainer img
-    {
-        width: 250px;
-        height: 150px;
-    }
-    .style1
-    {
+
+        #savedCopyContainer img {
+            width: 250px;
+            height: 150px;
+        }
+
+    .style1 {
         font-size: small;
     }
-    #byte_content
-    {
+
+    #byte_content {
         margin: 5px 0;
         max-height: 100px;
         overflow-y: auto;
         overflow-x: hidden;
     }
-    #byte_range
-    {
+
+    #byte_range {
         margin-top: 5px;
+    }
+    .auto-style1 {
+        height: 65px;
     }
 </style>
 <input id="ScaleControl" type="range" min="1" max="10" step="1" value="10" oninput="SetScale(this.value)"
        onchange="SetScale(this.value)">Scale</input>
 <br>
-<input type="file" id="ImageFile1" onchange="previewImageFile()">
+<input type="file" id="ImageFile1" onchange="previewImageFile()" title="Browse picture..." value="Browse picture...">
 <input id="Generate"
        type="button" value="Generate G-Code" onclick="GenerateGcode_onclick()" />
-<input id="useVectorize" title="Use Vector" type="checkbox" value="on">Use Vectorize</input>
-<br>
+<input id="useVectorize" title="Use Vector" type="checkbox" value="on" onchange="ChangeVectors()">Use Vectorize</input>
+<input id="Radio1" checked="true" name="R1" type="radio" value="V1" /><input id="Radio2" checked="true" name="R2" type="radio" value="V1" /><input id="Radio3" checked="true" name="R3" type="radio" value="V1" /><br>
 <br>
 <input id="Light" type="range" min="0" max="255" step="1" oninput="SetLight(this.value)"
        onchange="SetLight(this.value)">Light</input>
@@ -111,13 +113,16 @@
     <pre id="info">
 </pre>
 </div>
-<input type="button" value="Send" onclick="doSendGcode()" />
+<input type="button" value="Send to CNC" onclick="doSendGcode()" />
 <input type="file" id="Gfile"
-       onchange="previewFile()">
+       onchange="previewFile()" title="Browse Gcode file...">
 <br>
 Gcode:
 <br>
-<pre id="Gcode" contenteditable="true"></pre>
+<pre id="Gcode" contenteditable="true" class="auto-style1" style="font-size: small; font-family: Arial">
+    G0 X40 Y40
+    G0 X0 Y0
+</pre>
 <br>
 <br>
 <script language="javascript" type="text/javascript">
@@ -137,9 +142,30 @@ Gcode:
     var regex = /.*[^\n]/gmi;
     var im = document.getElementById('imageTest');
     var smooth = 1;
+    var lastTimePerSend = Date.now();
 
-    function setProcText(index) { info.textContent = "" + index + "/" + preview.textContent.length; }
+    function setProcText(index) {
+        var n = Date.now();
+        var t = n - lastTimePerSend;
+        lastTimePerSend = Date.now();
 
+        var prc = 100 * index / preview.textContent.length;
+        info.textContent = "" + index + "/" + preview.textContent.length + " <br>~ "+ prc.toFixed(1)+" %";
+    }
+
+    function SetScale(s) {
+        scale = s;
+        refreshCanvas();
+    }
+
+    function SetLight(l) {
+        light = l;
+        refreshCanvas();
+    }
+
+    function ChangeVectors(l) {
+        refreshCanvas();
+    }
 
     function GetGmsg(str) {
         let m;
@@ -351,7 +377,7 @@ Gcode:
         var GcodeString = "";
         canvasData = context.getImageData(0, 0, canvas.width, canvas.height);
         for (var x = 0; x < canvas.width; x++)
-            for (var y = 0; y < canvas.height; y++) 
+            for (var y = 0; y < canvas.height; y++)
                 if (isAt(x, y, PATH)) GcodeString = GcodeString + findWay(x, y);
         //context.putImageData(canvasData, 0, 0);
         return GcodeString;
@@ -420,11 +446,11 @@ Gcode:
                 debugLine(x, y, prev.x, prev.y, "green", smooth * 2);
                 GcodeString = ADDGCode(GcodeString, 'G1', prev.x, prev.y);
                 a = [];
-                
+
                 x = u; y = v;
                 GcodeString = ADDGCode(GcodeString, 'G1', x, y);
                 drawPixel(u, v, LINE, FILL, LINE, EMPTY);
-            } 
+            }
         }
         return GcodeString;
     }
@@ -576,17 +602,6 @@ Gcode:
         pre.innerHTML = message;
         output.appendChild(pre);
     }
-
-    function SetScale(s) {
-        scale = s;
-        refreshCanvas();
-    }
-
-    function SetLight(l) {
-        light = l;
-        refreshCanvas();
-    }
-
 
     window.onload = function () {
         im = document.getElementById('imageTest');
