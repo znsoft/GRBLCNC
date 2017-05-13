@@ -318,7 +318,9 @@ Gcode:
     }
 
     function ADDGCode(GcodeString, sym, x, y) {
-        GcodeString = GcodeString + sym + ' X' + x / scale + ' Y' + y / scale + ' \n';
+        var u = x / scale;
+        var v = y / scale;
+        GcodeString = GcodeString + sym + ' X' + Math.round(u * 1000) / 1000 + ' Y' + Math.round(v * 1000) / 1000 + ' \n';
         return GcodeString;
     }
 
